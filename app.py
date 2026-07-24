@@ -91,7 +91,6 @@ def generar_emparejamientos(equipos_ordenados, ronda, selecciones, historial_tor
     partidos_formateados = []
     equipos_a_emparejar = equipos_ordenados.copy()
 
-    # Rul 1: BYE estricto para el peor rankeado si la cantidad es impar
     if len(equipos_a_emparejar) % 2 != 0:
         for eq in reversed(equipos_a_emparejar):
             if "BYE" not in selecciones[eq]["rivales"]:
@@ -99,7 +98,6 @@ def generar_emparejamientos(equipos_ordenados, ronda, selecciones, historial_tor
                 equipos_a_emparejar.remove(eq)
                 break
 
-    # Rul 2: Regla especial para Ronda 1 (Alternancia L-V perfecta y cruces por mitades)
     if ronda == 1:
         mitad = len(equipos_a_emparejar) // 2
         for i in range(mitad):
@@ -108,11 +106,9 @@ def generar_emparejamientos(equipos_ordenados, ronda, selecciones, historial_tor
                 partidos_formateados.append((eq1, eq2))
             else:
                 partidos_formateados.append((eq2, eq1))
-        # Ordenar por Mesa 1
         partidos_formateados.sort(key=lambda x: selecciones[x[0]]["elo"], reverse=True)
         return partidos_formateados
 
-    # Rul 3: Sistema de Mitades (Dutch System) + Grafos para Rondas 2 en adelante
     grupos_puntos = {}
     for eq in equipos_a_emparejar:
         pts = selecciones[eq]["puntos"]
@@ -151,7 +147,6 @@ def generar_emparejamientos(equipos_ordenados, ronda, selecciones, historial_tor
             if eq2 not in selecciones[eq1]["rivales"]:
                 peso = 1000000000 
                 
-                # Control estricto de alternancia L-V mediante historial real
                 l1 = sum(1 for r_prev in range(1, ronda) for p in historial_torneo[r_prev] if p[0] == eq1)
                 v1 = sum(1 for r_prev in range(1, ronda) for p in historial_torneo[r_prev] if p[2] == eq1)
                 l2 = sum(1 for r_prev in range(1, ronda) for p in historial_torneo[r_prev] if p[0] == eq2)
@@ -161,7 +156,6 @@ def generar_emparejamientos(equipos_ordenados, ronda, selecciones, historial_tor
                 if (b1 > 0 and b2 > 0) or (b1 < 0 and b2 < 0):
                     peso -= 500000000
                 
-                # Puntos y mitades
                 diff_pts = abs(selecciones[eq1]["puntos"] - selecciones[eq2]["puntos"])
                 peso -= diff_pts * 10000
                 
@@ -215,7 +209,6 @@ if st.sidebar.button("🚀 Simular Torneo Completo", type="primary"):
         historial_torneo = {}
         evolucion_puntos = {k: [0] for k in selecciones.keys()}
 
-        # Simulación ronda por ronda
         for ronda in range(1, n_rondas + 1):
             historial_torneo[ronda] = []
             equipos_actuales = sorted(selecciones.keys(), key=lambda x: selecciones[x]["elo"], reverse=True) if ronda == 1 else sorted(selecciones.keys(), key=lambda x: (selecciones[x]["puntos"], selecciones[x]["elo"]), reverse=True)
@@ -231,13 +224,11 @@ if st.sidebar.button("🚀 Simular Torneo Completo", type="primary"):
                     
                 g1, g2, p1, p2 = simular_partido(selecciones[eq1]["elo"], selecciones[eq2]["elo"])
                 
-                # Actualizar Elo
                 delta1 = calcular_cambio_elo(selecciones[eq1]["elo"], selecciones[eq2]["elo"], p1)
                 delta2 = calcular_cambio_elo(selecciones[eq2]["elo"], selecciones[eq1]["elo"], p2)
                 selecciones[eq1]["delta_elo"] += delta1
                 selecciones[eq2]["delta_elo"] += delta2
                 
-                # Actualizar puntos y goles
                 selecciones[eq1]["puntos"] += p1
                 selecciones[eq1]["gf"] += g1
                 selecciones[eq1]["gc"] += g2
@@ -296,7 +287,31 @@ if st.sidebar.button("🚀 Simular Torneo Completo", type="primary"):
         df_display = pd.DataFrame(data_tabla)
         st.dataframe(df_display, use_container_width=True, height=450)
 
-        # --- SECCIÓN 3: BITÁCORA DE PARTIDOS ---
+        # --- SECCIÓN 3: MATRIZ DE LAS 5 MESAS PRINCIPALES ---
+        st.subheader("🔥 Seguimiento de Mesas Principales (Top 5 Mesas)")
+        st.markdown("Resultados de los duelos estelares ronda a ronda en las primeras 5 mesas del torneo.")
+
+        matriz_mesas = []
+        for r in range(1, n_rondas + 1):
+            fila_ronda = {"Ronda": f"Ronda {r}"}
+            partidos_ronda = historial_torneo[r]
+            
+            for mesa_idx in range(5):
+                mesa_nombre = f"Mesa {mesa_idx + 1}"
+                if mesa_idx < len(partidos_ronda):
+                    p = partidos_ronda[mesa_idx]
+                    if len(p) == 4 and p[1] != "BYE":
+                        fila_ronda[mesa_nombre] = f"{p[0]} ({p[1]}) - ({p[3]}) {p[2]}"
+                    else:
+                        fila_ronda[mesa_nombre] = f"{p[0]} (Libre)"
+                else:
+                    fila_ronda[mesa_nombre] = "-"
+            matriz_mesas.append(fila_ronda)
+
+        df_mesas = pd.DataFrame(matriz_mesas)
+        st.dataframe(df_mesas, use_container_width=True)
+
+        # --- SECCIÓN 4: BITÁCORA DE PARTIDOS ---
         st.subheader("📅 Bitácora Completa de Partidos")
         for r in range(1, n_rondas + 1):
             with st.expander(f"Ronda {r} ({len(historial_torneo[r])} partidos disputados)"):
