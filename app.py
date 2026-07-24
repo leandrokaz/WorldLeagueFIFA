@@ -285,7 +285,8 @@ if st.sidebar.button("🚀 Simular Torneo Completo", type="primary"):
             })
             
         df_display = pd.DataFrame(data_tabla)
-        st.dataframe(df_display, use_container_width=True, height=450)
+        # Ocultamos el índice numérico con hide_index=True
+        st.dataframe(df_display, use_container_width=True, height=450, hide_index=True)
 
         # --- SECCIÓN 3: MATRIZ DE LAS 5 MESAS PRINCIPALES ---
         st.subheader("🔥 Seguimiento de Mesas Principales (Top 5 Mesas)")
@@ -309,7 +310,9 @@ if st.sidebar.button("🚀 Simular Torneo Completo", type="primary"):
             matriz_mesas.append(fila_ronda)
 
         df_mesas = pd.DataFrame(matriz_mesas)
-        st.dataframe(df_mesas, use_container_width=True)
+        # Establecemos 'Ronda' como índice visual y ocultamos el índice de Pandas
+        df_mesas = df_mesas.set_index("Ronda")
+        st.dataframe(df_mesas, use_container_width=True, hide_index=False)
 
         # --- SECCIÓN 4: BITÁCORA DE PARTIDOS ---
         st.subheader("📅 Bitácora Completa de Partidos")
